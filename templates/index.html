@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GS Equity Screener — Institutional-Grade Stock Analysis</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <h1>Goldman Sachs–Level Equity Screener</h1>
+        <p>Institutional-Grade Stock Analysis &amp; Screening</p>
+    </header>
+
+    <div class="container">
+        <!-- Stock Lookup Search Bar -->
+        <div class="screener-form" style="margin-bottom: 1.5rem;">
+            <h2>Stock Lookup</h2>
+            <p style="color: #7a7a8e; font-size: 0.82rem; margin-bottom: 1rem;">Search any stock by ticker symbol to see its full analysis</p>
+            <form id="lookupForm" style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap;">
+                <div class="form-group" style="flex: 1; min-width: 200px;">
+                    <label for="lookupTicker">Ticker Symbol</label>
+                    <input type="text" id="lookupTicker" placeholder="e.g. AAPL, TSLA, BTC-USD..." style="text-transform: uppercase;">
+                </div>
+                <div class="form-group" style="min-width: 150px;">
+                    <label for="lookupAmount">Your Budget (USD)</label>
+                    <input type="number" id="lookupAmount" value="500" min="1" step="1">
+                </div>
+                <button type="submit" class="btn-submit" id="lookupBtn" style="width: auto; padding: 0.75rem 2rem; height: fit-content;">Analyze Stock</button>
+            </form>
+        </div>
+
+        <!-- Lookup Loading -->
+        <div class="loading" id="lookupLoading">
+            <div class="spinner"></div>
+            <p>Fetching data and running analysis...</p>
+        </div>
+
+        <!-- Lookup Results -->
+        <div class="results" id="lookupResults">
+            <div class="results-header">
+                <h2>Stock Analysis Report</h2>
+                <div class="results-meta"><span id="lookupMeta"></span></div>
+            </div>
+            <div class="detail-cards" id="lookupCards"></div>
+            <div class="disclaimer">
+                <strong>Disclaimer:</strong> This tool is for educational purposes only. Not financial advice. Data from Yahoo Finance may be delayed.
+            </div>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #1e1e2e; margin: 2rem 0;">
+
+        <!-- Investment Profile Form -->
+        <div class="screener-form">
+            <h2>Investment Profile</h2>
+            <form id="screenForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="riskTolerance">Risk Tolerance</label>
+                        <select id="riskTolerance" name="riskTolerance">
+                            <option value="Conservative">Conservative — Capital Preservation</option>
+                            <option value="Moderate" selected>Moderate — Balanced Growth</option>
+                            <option value="Aggressive">Aggressive — Maximum Growth</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="investmentAmount">Investment Amount (USD)</label>
+                        <input type="number" id="investmentAmount" name="investmentAmount" value="500" min="1" step="1">
+                    </div>
+                    <div class="form-group">
+                        <label for="timeHorizon">Time Horizon</label>
+                        <select id="timeHorizon" name="timeHorizon">
+                            <option value="Short-term (1-3 months)">Short-term (1–3 months)</option>
+                            <option value="Medium-term (6-12 months)" selected>Medium-term (6–12 months)</option>
+                            <option value="Long-term (1-5 years)">Long-term (1–5 years)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <p class="sectors-label">Preferred Sectors</p>
+                <div class="sector-grid">
+                    <input class="sector-chip" type="checkbox" id="sec-all" value="All" checked>
+                    <label for="sec-all">All Sectors</label>
+                    {% for sector in sectors %}
+                    <input class="sector-chip" type="checkbox" id="sec-{{ sector|lower|replace(' ', '-') }}" value="{{ sector }}">
+                    <label for="sec-{{ sector|lower|replace(' ', '-') }}">{{ sector }}</label>
+                    {% endfor %}
+                </div>
+
+                <button type="submit" class="btn-submit" id="submitBtn">Run Screening Analysis</button>
+            </form>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p id="loadingText">Analyzing stocks across selected sectors...</p>
+            <p style="color: #555; font-size: 0.78rem; margin-top: 0.5rem;">Fetching real-time market data for 350+ stocks. This may take 30–60 seconds.</p>
+        </div>
+
+        <!-- Results -->
+        <div class="results" id="results">
+            <div class="results-header">
+                <h2>Equity Research Screening Report</h2>
+                <div class="results-meta">
+                    <span id="resultsMeta"></span>
+                </div>
+            </div>
+
+            <!-- Summary Table -->
+            <div class="table-wrapper">
+                <table class="summary-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Ticker</th>
+                            <th>Company</th>
+                            <th>Sector</th>
+                            <th>Price</th>
+                            <th>P/E</th>
+                            <th>Rev Growth</th>
+                            <th>D/E</th>
+                            <th>Div Yield</th>
+                            <th>Moat</th>
+                            <th>Risk</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="summaryBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Detail Cards -->
+            <div class="detail-cards" id="detailCards"></div>
+
+            <!-- Disclaimer -->
+            <div class="disclaimer">
+                <strong>Disclaimer:</strong> This screening tool is for educational and informational purposes only.
+                It does not constitute financial advice, investment recommendations, or an offer to buy or sell securities.
+                All data is sourced from Yahoo Finance and may be delayed or inaccurate. Past performance does not guarantee
+                future results. Always consult a qualified financial advisor before making investment decisions.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== STOCK LOOKUP =====
+        document.getElementById('lookupForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const symbol = document.getElementById('lookupTicker').value.trim();
+            if (!symbol) return;
+
+            document.getElementById('lookupLoading').classList.add('active');
+            document.getElementById('lookupResults').classList.remove('active');
+            document.getElementById('lookupBtn').disabled = true;
+
+            try {
+                const resp = await fetch('/lookup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        investmentAmount: document.getElementById('lookupAmount').value,
+                    }),
+                });
+                const data = await resp.json();
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    renderLookupResults(data);
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                document.getElementById('lookupLoading').classList.remove('active');
+                document.getElementById('lookupBtn').disabled = false;
+            }
+        });
+
+        function renderLookupResults(data) {
+            const { stocks, timestamp } = data;
+            document.getElementById('lookupMeta').innerHTML =
+                `Generated: ${timestamp} &nbsp;|&nbsp; Single Stock Deep Dive`;
+
+            let cards = '';
+            stocks.forEach(s => {
+                cards += buildDetailCard(s);
+            });
+            document.getElementById('lookupCards').innerHTML = cards;
+            document.getElementById('lookupResults').classList.add('active');
+            document.getElementById('lookupResults').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ===== SCREENER =====
+        // Sector checkbox logic: "All" deselects others, selecting a sector deselects "All"
+        const allChip = document.getElementById('sec-all');
+        const sectorChips = document.querySelectorAll('.sector-chip:not(#sec-all)');
+
+        allChip.addEventListener('change', () => {
+            if (allChip.checked) {
+                sectorChips.forEach(c => c.checked = false);
+            }
+        });
+
+        sectorChips.forEach(chip => {
+            chip.addEventListener('change', () => {
+                if (chip.checked) {
+                    allChip.checked = false;
+                }
+                // If nothing selected, re-check All
+                const anyChecked = [...sectorChips].some(c => c.checked);
+                if (!anyChecked) allChip.checked = true;
+            });
+        });
+
+        // Form submission
+        document.getElementById('screenForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const sectors = [];
+            if (allChip.checked) {
+                sectors.push('All');
+            } else {
+                sectorChips.forEach(c => { if (c.checked) sectors.push(c.value); });
+            }
+
+            const payload = {
+                riskTolerance: document.getElementById('riskTolerance').value,
+                investmentAmount: document.getElementById('investmentAmount').value,
+                timeHorizon: document.getElementById('timeHorizon').value,
+                sectors: sectors,
+            };
+
+            // Show loading
+            document.getElementById('loading').classList.add('active');
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('submitBtn').disabled = true;
+
+            try {
+                const resp = await fetch('/screen', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+                const data = await resp.json();
+                renderResults(data);
+            } catch (err) {
+                alert('Error: ' + err.message);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                document.getElementById('submitBtn').disabled = false;
+            }
+        });
+
+        function formatMktCap(val) {
+            if (!val) return 'N/A';
+            if (val >= 1e12) return '$' + (val / 1e12).toFixed(2) + 'T';
+            if (val >= 1e9) return '$' + (val / 1e9).toFixed(1) + 'B';
+            if (val >= 1e6) return '$' + (val / 1e6).toFixed(0) + 'M';
+            return '$' + val.toLocaleString();
+        }
+
+        function colorVal(val, positive) {
+            if (val === null || val === undefined) return '<span class="text-muted">N/A</span>';
+            const cls = (positive && val > 0) || (!positive && val < 0) ? 'text-green' : (val === 0 ? 'text-muted' : 'text-red');
+            const sign = val > 0 ? '+' : '';
+            return `<span class="${cls}">${sign}${val}%</span>`;
+        }
+
+        function badgeClass(label) {
+            const l = label.toLowerCase().replace(/\s+/g, '-').replace(/[()]/g, '');
+            if (['strong', 'excellent', 'highly-sustainable', 'accelerating'].some(k => l.includes(k))) return 'badge-strong';
+            if (['moderate', 'good', 'sustainable', 'stable', 'fairly-valued'].some(k => l.includes(k))) return 'badge-moderate';
+            if (['weak', 'poor', 'at-risk', 'concerning', 'decelerating', 'overvalued'].some(k => l.includes(k))) return 'badge-weak';
+            if (l.includes('undervalued')) return 'badge-strong';
+            return 'badge-na';
+        }
+
+        function riskColor(risk) {
+            if (risk <= 3) return '#2ecc71';
+            if (risk <= 5) return '#c9a84c';
+            if (risk <= 7) return '#e67e22';
+            return '#e74c3c';
+        }
+
+        function buildDetailCard(s) {
+            const revHistHTML = s.revenueHistory.length > 0
+                ? s.revenueHistory.map(r => `<tr><td class="text-muted">${r.year}</td><td>${colorVal(r.growth, true)}</td></tr>`).join('')
+                : '<tr><td class="text-muted" colspan="2">No historical data</td></tr>';
+
+            const moatReasonsHTML = s.moatReasons.length > 0
+                ? s.moatReasons.map(r => `<li>${r}</li>`).join('')
+                : '<li>Limited competitive advantages identified</li>';
+
+            return `
+            <div class="detail-card">
+                <div class="card-header">
+                    <div class="stock-info">
+                        <h3>${s.companyName} <span class="ticker-label">${s.symbol}</span></h3>
+                        <p>${s.sector} · ${s.industry} · ${formatMktCap(s.marketCap)}</p>
+                        <p style="margin-top:0.3rem"><span class="badge ${s.confidenceSources >= 5 ? 'badge-strong' : s.confidenceSources >= 3 ? 'badge-moderate' : 'badge-weak'}">${s.confidenceSources}/6 data sources verified</span> ${s.numAnalysts ? `<span class="badge badge-na">${s.numAnalysts} analysts</span>` : ''}</p>
+                    </div>
+                    <div class="price-info">
+                        <div class="price">$${s.currentPrice.toFixed(2)}</div>
+                        <div class="score-label">Score: ${s.score}/100</div>
+                        <div class="score-bar-container"><div class="score-bar" style="width:${s.score}%"></div></div>
+                    </div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <h4>P/E Ratio Analysis</h4>
+                        <div class="metric-row"><span class="label">Trailing P/E</span><span class="value">${s.trailingPE ?? 'N/A'}</span></div>
+                        <div class="metric-row"><span class="label">Forward P/E</span><span class="value">${s.forwardPE ?? 'N/A'}</span></div>
+                        <div class="metric-row"><span class="label">Sector Avg P/E</span><span class="value">${s.sectorAvgPE}</span></div>
+                        <div class="metric-row"><span class="label">vs Sector</span><span class="value">${s.peVsSector ? s.peVsSector + 'x' : 'N/A'}</span></div>
+                        <div class="metric-row"><span class="label">Valuation</span><span class="badge ${badgeClass(s.peLabel)}">${s.peLabel}</span></div>
+                    </div>
+                    <div class="metric-box">
+                        <h4>Revenue Growth</h4>
+                        <div class="metric-row"><span class="label">Latest Growth</span><span class="value">${colorVal(s.revenueGrowth, true)}</span></div>
+                        <div class="metric-row"><span class="label">Trend</span><span class="badge ${badgeClass(s.revenueTrend)}">${s.revenueTrend}</span></div>
+                        <table class="rev-table">${revHistHTML}</table>
+                    </div>
+                    <div class="metric-box">
+                        <h4>Debt-to-Equity Health Check</h4>
+                        <div class="metric-row"><span class="label">D/E Ratio</span><span class="value">${s.debtToEquity.toFixed(2)}x</span></div>
+                        <div class="metric-row"><span class="label">Health</span><span class="badge ${badgeClass(s.debtHealth)}">${s.debtHealth}</span></div>
+                    </div>
+                    <div class="metric-box">
+                        <h4>Dividend Analysis</h4>
+                        <div class="metric-row"><span class="label">Dividend Yield</span><span class="value">${s.dividendYield > 0 ? s.dividendYield.toFixed(2) + '%' : 'N/A'}</span></div>
+                        <div class="metric-row"><span class="label">Payout Ratio</span><span class="value">${s.payoutRatio.toFixed(1)}%</span></div>
+                        <div class="metric-row"><span class="label">Sustainability</span><span class="badge ${badgeClass(s.divSustainability)}">${s.divSustainability}</span></div>
+                    </div>
+                    <div class="metric-box">
+                        <h4>Competitive Moat</h4>
+                        <div class="metric-row"><span class="label">Rating</span><span class="badge ${badgeClass(s.moatRating)}">${s.moatRating}</span></div>
+                        <ul class="moat-reasons">${moatReasonsHTML}</ul>
+                    </div>
+                    <div class="metric-box">
+                        <h4>12-Month Price Targets</h4>
+                        <div class="metric-row"><span class="label">Bull Case</span><span class="value">${s.targetHigh ? '$' + s.targetHigh.toFixed(2) : 'N/A'} ${s.bullUpside !== null ? colorVal(s.bullUpside, true) : ''}</span></div>
+                        <div class="metric-row"><span class="label">Mean Target</span><span class="value">${s.targetMean ? '$' + s.targetMean.toFixed(2) : 'N/A'} ${s.meanTargetPct !== null ? colorVal(s.meanTargetPct, true) : ''}</span></div>
+                        <div class="metric-row"><span class="label">Bear Case</span><span class="value">${s.targetLow ? '$' + s.targetLow.toFixed(2) : 'N/A'} ${s.bearDownside !== null ? colorVal(s.bearDownside, true) : ''}</span></div>
+                        <div class="metric-row"><span class="label">Analyst Coverage</span><span class="value">${s.numAnalysts || 0} analysts</span></div>
+                    </div>
+                    <div class="metric-box">
+                        <h4>Risk Assessment</h4>
+                        <div class="metric-row"><span class="label">Risk Rating</span><span class="value" style="color:${riskColor(s.riskRating)}">${s.riskRating}/10</span></div>
+                        <div class="metric-row"><span class="label">Beta</span><span class="value">${s.beta}</span></div>
+                        <div class="risk-bar-container">
+                            <div class="risk-bar" style="width:${s.riskRating * 10}%; background:${riskColor(s.riskRating)}"></div>
+                        </div>
+                    </div>
+                    <div class="metric-box">
+                        <h4>Entry Zone &amp; Stop-Loss</h4>
+                        <div class="metric-row"><span class="label">Entry Zone</span><span class="value text-green">$${s.entryLow} – $${s.entryHigh}</span></div>
+                        <div class="metric-row"><span class="label">Stop-Loss</span><span class="value text-red">$${s.stopLoss}</span></div>
+                        <div class="metric-row"><span class="label">52-Week Range</span><span class="value">$${s.fiftyTwoLow} – $${s.fiftyTwoHigh}</span></div>
+                        <div class="metric-row"><span class="label">Shares Affordable</span><span class="value">${s.sharesAffordable}${s.fractional ? ' (fractional)' : ''} — $${s.positionValue?.toLocaleString()}</span></div>
+                    </div>
+                </div>
+                ${s.technical ? buildTechnicalSection(s.technical, s.currentPrice) : ''}
+            </div>`;
+        }
+
+        function buildTechnicalSection(t, price) {
+            const recColors = { green: '#2ecc71', red: '#e74c3c', gold: '#c9a84c' };
+            const recColor = recColors[t.recommendationColor] || '#c9a84c';
+
+            const supportsHTML = t.supports && t.supports.length > 0
+                ? t.supports.map(s => {
+                    const pct = ((price - s.price) / s.price * 100).toFixed(1);
+                    const bars = '█'.repeat(Math.min(s.strength, 8));
+                    return `<div class="metric-row"><span class="label">$${s.price} <span class="text-muted">(${pct}% above)</span></span><span class="value text-green">${bars} ${s.strength}x tested</span></div>`;
+                }).join('')
+                : '<div class="metric-row"><span class="text-muted">No clear support levels found</span></div>';
+
+            const resistancesHTML = t.resistances && t.resistances.length > 0
+                ? t.resistances.map(r => {
+                    const pct = ((r.price - price) / price * 100).toFixed(1);
+                    const bars = '█'.repeat(Math.min(r.strength, 8));
+                    return `<div class="metric-row"><span class="label">$${r.price} <span class="text-muted">(${pct}% above)</span></span><span class="value text-red">${bars} ${r.strength}x tested</span></div>`;
+                }).join('')
+                : '<div class="metric-row"><span class="text-muted">No clear resistance levels found</span></div>';
+
+            const reasonsHTML = t.reasons && t.reasons.length > 0
+                ? t.reasons.map(r => {
+                    let icon = '•';
+                    let color = '#9a9ab0';
+                    if (r.includes('above 200') || r.includes('Golden') || r.includes('oversold') || r.includes('bounce') || r.includes('bullish') || r.includes('discount') || r.includes('support')) {
+                        icon = '▲'; color = '#2ecc71';
+                    } else if (r.includes('below 200') || r.includes('Death') || r.includes('overbought') || r.includes('bearish') || r.includes('Bearish') || r.includes('downtrend') || r.includes('rejected')) {
+                        icon = '▼'; color = '#e74c3c';
+                    } else if (r.includes('Wait') || r.includes('resistance') || r.includes('elevated') || r.includes('weakening') || r.includes('52-week high')) {
+                        icon = '◆'; color = '#c9a84c';
+                    }
+                    return `<li style="color:${color}"><span style="margin-right:6px">${icon}</span>${r}</li>`;
+                }).join('')
+                : '<li class="text-muted">Insufficient data for analysis</li>';
+
+            return `
+            <div style="margin-top:1.25rem; padding-top:1.25rem; border-top:2px solid #1e1e2e;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                    <h4 style="color:#c9a84c; font-size:0.85rem; font-weight:500; letter-spacing:1.5px; text-transform:uppercase; margin:0;">When to Buy — Technical Analysis</h4>
+                    <div style="display:flex; align-items:center; gap:0.75rem;">
+                        <span style="background:${recColor}22; color:${recColor}; border:1px solid ${recColor}55; border-radius:6px; padding:0.35rem 1rem; font-weight:600; font-size:0.85rem; letter-spacing:0.5px;">${t.recommendation}</span>
+                        <span class="text-muted" style="font-size:0.75rem;">▲${t.buySignals || 0} buy · ◆${t.waitSignals || 0} wait · ▼${t.avoidSignals || 0} avoid</span>
+                    </div>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-box">
+                        <h4>Support Levels <span class="text-muted" style="font-weight:400; text-transform:none;">(price floors)</span></h4>
+                        ${supportsHTML}
+                    </div>
+                    <div class="metric-box">
+                        <h4>Resistance Levels <span class="text-muted" style="font-weight:400; text-transform:none;">(price ceilings)</span></h4>
+                        ${resistancesHTML}
+                    </div>
+                    <div class="metric-box">
+                        <h4>Moving Averages</h4>
+                        <div class="metric-row"><span class="label">50-Day MA</span><span class="value ${t.ma50 && price > t.ma50 ? 'text-green' : 'text-red'}">${t.ma50 ? '$' + t.ma50 : 'N/A'}</span></div>
+                        <div class="metric-row"><span class="label">100-Day MA</span><span class="value ${t.ma100 && price > t.ma100 ? 'text-green' : 'text-red'}">${t.ma100 ? '$' + t.ma100 : 'N/A'}</span></div>
+                        <div class="metric-row"><span class="label">200-Day MA</span><span class="value ${t.ma200 && price > t.ma200 ? 'text-green' : 'text-red'}">${t.ma200 ? '$' + t.ma200 : 'N/A'}</span></div>
+                        <div class="metric-row"><span class="label">Price vs 200-MA</span><span class="value">${t.ma200 ? (price > t.ma200 ? '<span class="text-green">Above ▲</span>' : '<span class="text-red">Below ▼</span>') : 'N/A'}</span></div>
+                    </div>
+                    <div class="metric-box">
+                        <h4>Momentum Indicators</h4>
+                        <div class="metric-row"><span class="label">RSI (14)</span><span class="value" style="color:${t.rsi > 70 ? '#e74c3c' : t.rsi < 30 ? '#2ecc71' : '#e8e6e3'}">${t.rsi ?? 'N/A'}</span></div>
+                        <div class="metric-row"><span class="label">RSI Signal</span><span class="badge ${t.rsiLabel === 'Oversold' ? 'badge-strong' : t.rsiLabel === 'Overbought' ? 'badge-weak' : t.rsiLabel === 'Bullish' ? 'badge-strong' : t.rsiLabel === 'Bearish' ? 'badge-weak' : 'badge-na'}">${t.rsiLabel}</span></div>
+                        <div class="metric-row"><span class="label">MACD</span><span class="badge ${t.macdSignal.includes('Bullish') ? 'badge-strong' : t.macdSignal.includes('Bearish') ? 'badge-weak' : 'badge-na'}">${t.macdSignal}</span></div>
+                        <div class="metric-row"><span class="label">From 52w High</span><span class="value">${t.distFromHigh !== null ? t.distFromHigh + '%' : 'N/A'}</span></div>
+                        <div class="metric-row"><span class="label">From 52w Low</span><span class="value text-green">${t.distFromLow !== null ? '+' + t.distFromLow + '%' : 'N/A'}</span></div>
+                    </div>
+                </div>
+                <div style="background:#0e0e18; border:1px solid #1a1a25; border-radius:6px; padding:1rem; margin-top:1rem;">
+                    <h4 style="color:#9a9ab0; font-size:0.72rem; font-weight:500; letter-spacing:1px; text-transform:uppercase; margin-bottom:0.75rem;">Analysis Reasoning</h4>
+                    <ul style="list-style:none; padding:0; margin:0;">
+                        ${reasonsHTML}
+                    </ul>
+                </div>
+            </div>`;
+        }
+
+        function renderResults(data) {
+            const { stocks, totalAnalyzed, totalQualified, timestamp } = data;
+
+            document.getElementById('resultsMeta').innerHTML =
+                `Generated: ${timestamp} &nbsp;|&nbsp; Analyzed: ${totalAnalyzed} stocks &nbsp;|&nbsp; Qualified: ${totalQualified} &nbsp;|&nbsp; Methodology: Multi-Factor Quantitative Analysis`;
+
+            // Summary table
+            let tbody = '';
+            stocks.forEach(s => {
+                tbody += `<tr>
+                    <td class="rank">${s.rank}</td>
+                    <td class="ticker">${s.symbol}</td>
+                    <td>${s.companyName}</td>
+                    <td>${s.sector}</td>
+                    <td>$${s.currentPrice.toFixed(2)}</td>
+                    <td>${s.trailingPE ? s.trailingPE.toFixed(1) : 'N/A'}</td>
+                    <td>${colorVal(s.revenueGrowth, true)}</td>
+                    <td>${s.debtToEquity.toFixed(2)}x</td>
+                    <td>${s.dividendYield > 0 ? s.dividendYield.toFixed(2) + '%' : '—'}</td>
+                    <td><span class="badge ${badgeClass(s.moatRating)}">${s.moatRating}</span></td>
+                    <td><span style="color:${riskColor(s.riskRating)}">${s.riskRating}/10</span></td>
+                    <td class="text-gold">${s.score}</td>
+                </tr>`;
+            });
+            document.getElementById('summaryBody').innerHTML = tbody;
+
+            // Detail cards
+            let cards = '';
+            stocks.forEach(s => { cards += buildDetailCard(s); });
+            document.getElementById('detailCards').innerHTML = cards;
+            document.getElementById('results').classList.add('active');
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
