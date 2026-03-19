@@ -5,7 +5,7 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder=".")
 
 SECTOR_UNIVERSE = {
     "Technology": [
